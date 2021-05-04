@@ -5,7 +5,7 @@ const ERC1155InterfaceID = require('../constants/1155_interfaceID_abi')
 
 const provider = new ethers.providers.JsonRpcProvider(
   process.env.MAINNET_RPC,
-  250,
+  parseInt(process.env.MAINNET_CHAINID),
 )
 
 const INTERFACEID = 0xd9b67a26

@@ -10,7 +10,7 @@ const isValidERC1155 = require('../utils/ERC1155Validator')
 
 const provider = new ethers.providers.JsonRpcProvider(
   process.env.MAINNET_RPC,
-  250,
+  parseInt(process.env.MAINNET_CHAINID),
 )
 
 let remainder = process.env.REMAINDER
@@ -82,18 +82,17 @@ const erc1155EventHandler = async (address) => {
 }
 
 const trackERC1155 = async (tnx) => {
+  console.log(tnx)
   let contractAddress = tnx.creates
-  let name = tnx.tokenName
-  let symbol = tnx.tokenSymbol
   let erc1155 = await ERC1155CONTRACT.findOne({ address: contractAddress })
   if (!erc1155) {
     let minter = new ERC1155CONTRACT()
     minter.address = contractAddress
-    minter.name = name
-    minter.symbol = symbol
+    minter.name = 'name'
+    minter.symbol = 'symbol'
     await minter.save()
     let category = new Category()
-    category.minterAddress = contract.address
+    category.minterAddress = contractAddress
     category.type = 1155
     await category.save()
     await erc1155EventHandler(contractAddress)
@@ -105,17 +104,14 @@ const trackNewERC1155 = async () => {
   provider.on('block', async (blockNumber) => {
     let _remainder = blockNumber % 6
     if (_remainder == remainder) {
-      console.log(blockNumber)
       let block = await provider.getBlockWithTransactions(blockNumber)
       let tnxs = block.transactions
       if (tnxs.length > 0) {
         let promises = tnxs.map(async (tnx) => {
           if (tnx.creates != null) {
-            console.log('1155 new tnx')
             let contractAddress = tnx.creates
             let isERC1155 = await isValidERC1155(contractAddress)
             if (isERC1155) {
-              console.log('1155 new sc')
               await trackERC1155(tnx)
             }
           }
