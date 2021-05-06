@@ -15,6 +15,7 @@ require('./models/offer')
 require('./models/category')
 require('./models/erc1155contract')
 require('./models/erc1155token')
+require('./models/auction')
 
 const trackNewERC1155 = require('./services/erc1155tracker')
 
