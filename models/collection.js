@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose')
 
 const Collection = mongoose.Schema({
   erc721Address: { type: String, required: true },
@@ -12,6 +12,6 @@ const Collection = mongoose.Schema({
   instagramHandle: { type: String },
   mediumHandle: { type: String },
   telegram: { type: String },
-});
+})
 
-mongoose.model("Collection", Collection);
+mongoose.model('Collection', Collection)

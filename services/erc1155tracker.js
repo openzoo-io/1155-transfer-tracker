@@ -32,7 +32,11 @@ const handleSingleTransfer = async (
         let senderValue = ownerMap.get(from)
         if (senderValue >= value) {
           senderValue = senderValue - value
-          ownerMap.set(from, senderValue)
+          if (senderValue == value) {
+            ownerMap.delete(from)
+          } else {
+            ownerMap.set(from, senderValue)
+          }
         }
         //deduct value from sender
         let receiverValue = ownerMap.get(to)
