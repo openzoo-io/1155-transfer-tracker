@@ -39,6 +39,7 @@ const trackNewERC1155 = async () => {
           contract.on(
             'TransferSingle',
             async (operator, from, to, id, value) => {
+              console.log('transfer single')
               operator = toLowerCase(operator)
               from = toLowerCase(from)
               to = toLowerCase(to)
@@ -166,9 +167,11 @@ const trackNewERC1155 = async () => {
             },
           )
           contract.on('URI', async (value, id) => {
+            console.log('uri 1')
             setTimeout(async () => {
               id = parseFloat(id.toString())
               let tk = await ERC1155TOKEN.findOne({ tokenID: id })
+              console.log('uri 2', tk.tokenURI)
               tk.tokenURI = value
               await tk.save()
             }, 1000)
