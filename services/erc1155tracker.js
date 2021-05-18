@@ -48,15 +48,18 @@ const trackNewERC1155 = async () => {
               try {
                 if (from == validatorAddress) {
                   // this is a new mint
-                  let newTk = new ERC1155TOKEN()
-                  let ownerMap = new Map()
-                  ownerMap.set(to, value)
-                  newTk.owner = ownerMap
-                  newTk.contractAddress = address
-                  newTk.tokenID = id
-                  newTk.supply = value
-                  newTk.tokenURI = 'https://'
-                  await newTk.save()
+                  let tk = await ERC1155TOKEN.findOne({ tokenID: id })
+                  if (!tk) {
+                    let newTk = new ERC1155TOKEN()
+                    let ownerMap = new Map()
+                    ownerMap.set(to, value)
+                    newTk.owner = ownerMap
+                    newTk.contractAddress = address
+                    newTk.tokenID = id
+                    newTk.supply = value
+                    newTk.tokenURI = 'https://'
+                    await newTk.save()
+                  }
                 } else {
                   let tk = await ERC1155TOKEN.findOne({
                     contractAddress: operator,
@@ -108,16 +111,18 @@ const trackNewERC1155 = async () => {
                 value = parseFloat(value.toString())
                 try {
                   if (from == validatorAddress) {
-                    // this is a new mint
-                    let newTk = new ERC1155TOKEN()
-                    let ownerMap = new Map()
-                    ownerMap.set(to, value)
-                    newTk.owner = ownerMap
-                    newTk.contractAddress = address
-                    newTk.tokenID = id
-                    newTk.supply = value
-                    newTk.tokenURI = 'https://'
-                    await newTk.save()
+                    let tk = await ERC1155TOKEN.findOne({ tokenID: id })
+                    if (!tk) {
+                      let newTk = new ERC1155TOKEN()
+                      let ownerMap = new Map()
+                      ownerMap.set(to, value)
+                      newTk.owner = ownerMap
+                      newTk.contractAddress = address
+                      newTk.tokenID = id
+                      newTk.supply = value
+                      newTk.tokenURI = 'https://'
+                      await newTk.save()
+                    }
                   } else {
                     let tk = await ERC1155TOKEN.findOne({
                       contractAddress: operator,
@@ -171,8 +176,8 @@ const trackNewERC1155 = async () => {
             setTimeout(async () => {
               id = parseFloat(id.toString())
               let tk = await ERC1155TOKEN.findOne({ tokenID: id })
-              console.log('uri 2', tk.tokenURI)
-              tk.tokenURI = value
+              let _tkURI = tk.tokenURI
+              if (_tkURI == 'https://') tk.tokenURI = value
               await tk.save()
             }, 1000)
           })
