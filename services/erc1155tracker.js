@@ -1,4 +1,5 @@
 require('dotenv').config()
+const { default: axios } = require('axios')
 const ethers = require('ethers')
 const mongoose = require('mongoose')
 const ERC1155CONTRACT = mongoose.model('ERC1155CONTRACT')
@@ -57,6 +58,7 @@ const trackNewERC1155 = async () => {
                     newTk.contractAddress = address
                     newTk.tokenID = id
                     newTk.supply = value
+                    newTk.createdAt = new Date()
                     newTk.tokenURI = 'https://'
                     await newTk.save()
                   }
@@ -83,19 +85,12 @@ const trackNewERC1155 = async () => {
                         ownerMap.set(to, receiverValue)
                         tk.owner = ownerMap
                         await tk.save()
-                      } catch (error) {
-                        console.log('in save while there is a tk')
-                        console.log(error)
-                      }
+                      } catch (error) {}
                     } else {
-                      console.log('else')
                     }
                   }
                 }
-              } catch (error) {
-                console.log('overall handle single transfer function')
-                console.log(error)
-              }
+              } catch (error) {}
             },
           )
           contract.on(
@@ -120,6 +115,7 @@ const trackNewERC1155 = async () => {
                       newTk.contractAddress = address
                       newTk.tokenID = id
                       newTk.supply = value
+                      newTk.createdAt = new Date()
                       newTk.tokenURI = 'https://'
                       await newTk.save()
                     }
@@ -146,19 +142,12 @@ const trackNewERC1155 = async () => {
                           ownerMap.set(to, receiverValue)
                           tk.owner = ownerMap
                           await tk.save()
-                        } catch (error) {
-                          console.log('in save while there is a tk')
-                          console.log(error)
-                        }
+                        } catch (error) {}
                       } else {
-                        console.log('else')
                       }
                     }
                   }
-                } catch (error) {
-                  console.log('overall handle single transfer function')
-                  console.log(error)
-                }
+                } catch (error) {}
                 await handleSingleTransfer(
                   operator,
                   from,
@@ -177,7 +166,16 @@ const trackNewERC1155 = async () => {
               id = parseFloat(id.toString())
               let tk = await ERC1155TOKEN.findOne({ tokenID: id })
               let _tkURI = tk.tokenURI
-              if (_tkURI == 'https://') tk.tokenURI = value
+              if (_tkURI == 'https://') {
+                tk.tokenURI = value
+                try {
+                  let metadata = await axios.get(_tkURI)
+                  let name = metadata.data.name
+                  tk.name = name
+                } catch (error) {
+                  tk.name = ''
+                }
+              }
               await tk.save()
             }, 1000)
           })
@@ -187,10 +185,7 @@ const trackNewERC1155 = async () => {
       setTimeout(async () => {
         await func()
       }, 1000 * 10)
-    } catch (error) {
-      console.log('error in tracking new 1155')
-      console.log(error)
-    }
+    } catch (error) {}
   }
   await func()
 }
