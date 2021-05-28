@@ -4,6 +4,7 @@ const ethers = require('ethers')
 const mongoose = require('mongoose')
 const ERC1155CONTRACT = mongoose.model('ERC1155CONTRACT')
 const ERC1155TOKEN = mongoose.model('ERC1155TOKEN')
+const ERC1155HOLDING = mongoose.model('ERC1155HOLDING')
 
 const SimplifiedERC1155ABI = require('../constants/simplified1155abi')
 
@@ -62,32 +63,47 @@ const trackNewERC1155 = async () => {
                     newTk.tokenURI = 'https://'
                     await newTk.save()
                   }
+                  // now update the holdings collection
+                  let holding = new ERC1155HOLDING()
+                  holding.contractAddress = address
+                  holding.tokenID = id
+                  holding.holderAddress = to
+                  holding.supplyPerHolder = value
+                  await holding.save()
                 } else {
-                  let tk = await ERC1155TOKEN.findOne({
-                    contractAddress: operator,
+                  // first deduct from sender - from
+                  let senderHolding = await ERC1155HOLDING.findOne({
+                    contractAddress: address,
                     tokenID: id,
+                    holderAddress: from,
                   })
-                  if (tk) {
-                    //add value to the receiver
-                    let ownerMap = tk.owner
-                    if (ownerMap) {
-                      try {
-                        let senderValue = ownerMap.get(from)
-                        let remainingBalance = parseFloat(senderValue) - value
-                        if (remainingBalance == 0) {
-                          ownerMap.delete(from)
-                        } else {
-                          ownerMap.set(from, remainingBalance)
-                        }
-                        //deduct value from sender
-                        let receiverValue = ownerMap.get(to)
-                        receiverValue = receiverValue + value
-                        ownerMap.set(to, receiverValue)
-                        tk.owner = ownerMap
-                        await tk.save()
-                      } catch (error) {}
-                    } else {
+                  if (senderHolding) {
+                    try {
+                      senderHolding.supplyPerHolder = parseInt(
+                        senderHolding.supplyPerHolder - value,
+                      )
+                      await senderHolding.save()
+                    } catch (error) {}
+                  }
+                  // now add to receiver - to
+                  let receiverHolding = await ERC1155HOLDING.findOne({
+                    contractAddress: address,
+                    tokenID: id,
+                    holderAddress: to,
+                  })
+                  if (receiverHolding) {
+                    try {
+                    } catch (error) {
+                      receiverHolding.supplyPerHolder =
+                        parseInt(receiverHolding.supplyPerHolder) + value
+                      await receiverHolding.save()
                     }
+                  } else {
+                    let _receiverHolding = new ERC1155HOLDING()
+                    _receiverHolding.contractAddress = address
+                    _receiverHolding.tokenID = id
+                    _receiverHolding.holderAddress = to
+                    _receiverHolding.supplyPerHolder = value
                   }
                 }
               } catch (error) {}
@@ -109,42 +125,54 @@ const trackNewERC1155 = async () => {
                     let tk = await ERC1155TOKEN.findOne({ tokenID: id })
                     if (!tk) {
                       let newTk = new ERC1155TOKEN()
-                      let ownerMap = new Map()
-                      ownerMap.set(to, value)
-                      newTk.owner = ownerMap
                       newTk.contractAddress = address
                       newTk.tokenID = id
                       newTk.supply = value
                       newTk.createdAt = new Date()
                       newTk.tokenURI = 'https://'
                       await newTk.save()
+                      // update holding here
+                      let holding = new ERC1155HOLDING()
+                      holding.contractAddress = address
+                      holding.holderAddress = to
+                      holding.tokenID = id
+                      holding.supplyPerHolder = value
+                      await holding.save()
                     }
                   } else {
-                    let tk = await ERC1155TOKEN.findOne({
-                      contractAddress: operator,
+                    // first deduct from sender - from
+                    let senderHolding = await ERC1155HOLDING.findOne({
+                      contractAddress: address,
                       tokenID: id,
+                      holderAddress: from,
                     })
-                    if (tk) {
-                      //add value to the receiver
-                      let ownerMap = tk.owner
-                      if (ownerMap) {
-                        try {
-                          let senderValue = ownerMap.get(from)
-                          let remainingBalance = parseFloat(senderValue) - value
-                          if (remainingBalance == 0) {
-                            ownerMap.delete(from)
-                          } else {
-                            ownerMap.set(from, remainingBalance)
-                          }
-                          //deduct value from sender
-                          let receiverValue = ownerMap.get(to)
-                          receiverValue = receiverValue + value
-                          ownerMap.set(to, receiverValue)
-                          tk.owner = ownerMap
-                          await tk.save()
-                        } catch (error) {}
-                      } else {
+                    if (senderHolding) {
+                      try {
+                        senderHolding.supplyPerHolder = parseInt(
+                          senderHolding.supplyPerHolder - value,
+                        )
+                        await senderHolding.save()
+                      } catch (error) {}
+                    }
+                    // now add to receiver - to
+                    let receiverHolding = await ERC1155HOLDING.findOne({
+                      contractAddress: address,
+                      tokenID: id,
+                      holderAddress: to,
+                    })
+                    if (receiverHolding) {
+                      try {
+                      } catch (error) {
+                        receiverHolding.supplyPerHolder =
+                          parseInt(receiverHolding.supplyPerHolder) + value
+                        await receiverHolding.save()
                       }
+                    } else {
+                      let _receiverHolding = new ERC1155HOLDING()
+                      _receiverHolding.contractAddress = address
+                      _receiverHolding.tokenID = id
+                      _receiverHolding.holderAddress = to
+                      _receiverHolding.supplyPerHolder = value
                     }
                   }
                 } catch (error) {}
