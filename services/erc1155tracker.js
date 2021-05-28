@@ -53,9 +53,6 @@ const trackNewERC1155 = async () => {
                   let tk = await ERC1155TOKEN.findOne({ tokenID: id })
                   if (!tk) {
                     let newTk = new ERC1155TOKEN()
-                    let ownerMap = new Map()
-                    ownerMap.set(to, value)
-                    newTk.owner = ownerMap
                     newTk.contractAddress = address
                     newTk.tokenID = id
                     newTk.supply = value
