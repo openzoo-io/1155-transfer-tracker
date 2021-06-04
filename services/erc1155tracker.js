@@ -50,23 +50,37 @@ const trackNewERC1155 = async () => {
               try {
                 if (from == validatorAddress) {
                   // this is a new mint
-                  let tk = await ERC1155TOKEN.findOne({ tokenID: id })
+                  let tk = await ERC1155TOKEN.findOne({
+                    contractAddress: address,
+                    tokenID: id,
+                  })
                   if (!tk) {
-                    let newTk = new ERC1155TOKEN()
-                    newTk.contractAddress = address
-                    newTk.tokenID = id
-                    newTk.supply = value
-                    newTk.createdAt = new Date()
-                    newTk.tokenURI = 'https://'
-                    await newTk.save()
+                    try {
+                      let newTk = new ERC1155TOKEN()
+                      newTk.contractAddress = address
+                      newTk.tokenID = id
+                      newTk.supply = value
+                      newTk.createdAt = new Date()
+                      newTk.tokenURI = 'https://'
+                      await newTk.save()
+                    } catch (error) {
+                      console.log('error in saving new tk in single transfer')
+                      console.log(error)
+                    }
+                    try {
+                      // now update the holdings collection
+                      let holding = new ERC1155HOLDING()
+                      holding.contractAddress = address
+                      holding.tokenID = id
+                      holding.holderAddress = to
+                      holding.supplyPerHolder = value
+                      await holding.save()
+                    } catch (error) {
+                      console.log(
+                        'error in saving new holding in single transfer',
+                      )
+                    }
                   }
-                  // now update the holdings collection
-                  let holding = new ERC1155HOLDING()
-                  holding.contractAddress = address
-                  holding.tokenID = id
-                  holding.holderAddress = to
-                  holding.supplyPerHolder = value
-                  await holding.save()
                 } else {
                   // first deduct from sender - from
                   let senderHolding = await ERC1155HOLDING.findOne({
@@ -80,7 +94,10 @@ const trackNewERC1155 = async () => {
                         senderHolding.supplyPerHolder - value,
                       )
                       await senderHolding.save()
-                    } catch (error) {}
+                    } catch (error) {
+                      console.log('sender holding save failed')
+                      console.log(error)
+                    }
                   }
                   // now add to receiver - to
                   let receiverHolding = await ERC1155HOLDING.findOne({
@@ -90,20 +107,31 @@ const trackNewERC1155 = async () => {
                   })
                   if (receiverHolding) {
                     try {
-                    } catch (error) {
                       receiverHolding.supplyPerHolder =
                         parseInt(receiverHolding.supplyPerHolder) + value
                       await receiverHolding.save()
+                    } catch (error) {
+                      console.log('receiver holding failed in single transfer')
+                      console.log(error)
                     }
                   } else {
-                    let _receiverHolding = new ERC1155HOLDING()
-                    _receiverHolding.contractAddress = address
-                    _receiverHolding.tokenID = id
-                    _receiverHolding.holderAddress = to
-                    _receiverHolding.supplyPerHolder = value
+                    try {
+                      let _receiverHolding = new ERC1155HOLDING()
+                      _receiverHolding.contractAddress = address
+                      _receiverHolding.tokenID = id
+                      _receiverHolding.holderAddress = to
+                      _receiverHolding.supplyPerHolder = value
+                      await _receiverHolding.save()
+                    } catch (error) {
+                      console.log('error in single transfer updating receiver')
+                      console.log(error)
+                    }
                   }
                 }
-              } catch (error) {}
+              } catch (error) {
+                console.log('overall error')
+                console.log(error)
+              }
             },
           )
           contract.on(
@@ -119,22 +147,35 @@ const trackNewERC1155 = async () => {
                 value = parseFloat(value.toString())
                 try {
                   if (from == validatorAddress) {
-                    let tk = await ERC1155TOKEN.findOne({ tokenID: id })
+                    let tk = await ERC1155TOKEN.findOne({
+                      contractAddress: address,
+                      tokenID: id,
+                    })
                     if (!tk) {
-                      let newTk = new ERC1155TOKEN()
-                      newTk.contractAddress = address
-                      newTk.tokenID = id
-                      newTk.supply = value
-                      newTk.createdAt = new Date()
-                      newTk.tokenURI = 'https://'
-                      await newTk.save()
-                      // update holding here
-                      let holding = new ERC1155HOLDING()
-                      holding.contractAddress = address
-                      holding.holderAddress = to
-                      holding.tokenID = id
-                      holding.supplyPerHolder = value
-                      await holding.save()
+                      try {
+                        let newTk = new ERC1155TOKEN()
+                        newTk.contractAddress = address
+                        newTk.tokenID = id
+                        newTk.supply = value
+                        newTk.createdAt = new Date()
+                        newTk.tokenURI = 'https://'
+                        await newTk.save()
+                      } catch (error) {
+                        console.log('error in saving new tk')
+                        console.log(error)
+                      }
+                      try {
+                        // update holding here
+                        let holding = new ERC1155HOLDING()
+                        holding.contractAddress = address
+                        holding.holderAddress = to
+                        holding.tokenID = id
+                        holding.supplyPerHolder = value
+                        await holding.save()
+                      } catch (error) {
+                        console.log('single transfer save new holding error')
+                        console.log(error)
+                      }
                     }
                   } else {
                     // first deduct from sender - from
@@ -149,7 +190,12 @@ const trackNewERC1155 = async () => {
                           senderHolding.supplyPerHolder - value,
                         )
                         await senderHolding.save()
-                      } catch (error) {}
+                      } catch (error) {
+                        console.log(
+                          'error in batch transfer updating existing sender',
+                        )
+                        console.log(error)
+                      }
                     }
                     // now add to receiver - to
                     let receiverHolding = await ERC1155HOLDING.findOne({
@@ -159,28 +205,33 @@ const trackNewERC1155 = async () => {
                     })
                     if (receiverHolding) {
                       try {
-                      } catch (error) {
                         receiverHolding.supplyPerHolder =
                           parseInt(receiverHolding.supplyPerHolder) + value
                         await receiverHolding.save()
+                      } catch (error) {
+                        console.log(
+                          'error in batch transfer updating receiver holding',
+                        )
+                        console.log(error)
                       }
                     } else {
-                      let _receiverHolding = new ERC1155HOLDING()
-                      _receiverHolding.contractAddress = address
-                      _receiverHolding.tokenID = id
-                      _receiverHolding.holderAddress = to
-                      _receiverHolding.supplyPerHolder = value
+                      try {
+                        let _receiverHolding = new ERC1155HOLDING()
+                        _receiverHolding.contractAddress = address
+                        _receiverHolding.tokenID = id
+                        _receiverHolding.holderAddress = to
+                        _receiverHolding.supplyPerHolder = value
+                        await _receiverHolding.save()
+                      } catch (error) {
+                        console.log('batch transfer cannot save new holding')
+                        console.log(error)
+                      }
                     }
                   }
-                } catch (error) {}
-                await handleSingleTransfer(
-                  operator,
-                  from,
-                  to,
-                  ids[index],
-                  values[index],
-                  contract,
-                )
+                } catch (error) {
+                  console.log('batch transfer error')
+                  console.log(error)
+                }
               })
               Promise.all(promises)
             },
@@ -189,7 +240,10 @@ const trackNewERC1155 = async () => {
             console.log('uri 1')
             setTimeout(async () => {
               id = parseFloat(id.toString())
-              let tk = await ERC1155TOKEN.findOne({ tokenID: id })
+              let tk = await ERC1155TOKEN.findOne({
+                contractAddress: address,
+                tokenID: id,
+              })
               let _tkURI = tk.tokenURI
               if (_tkURI == 'https://') {
                 tk.tokenURI = value
