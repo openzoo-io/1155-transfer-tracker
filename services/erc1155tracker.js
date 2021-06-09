@@ -5,6 +5,7 @@ const mongoose = require('mongoose')
 const ERC1155CONTRACT = mongoose.model('ERC1155CONTRACT')
 const ERC1155TOKEN = mongoose.model('ERC1155TOKEN')
 const ERC1155HOLDING = mongoose.model('ERC1155HOLDING')
+const BannedNFT = mongoose.model('BannedNFT')
 
 const SimplifiedERC1155ABI = require('../constants/simplified1155abi')
 
@@ -56,13 +57,20 @@ const trackNewERC1155 = async () => {
                   })
                   if (!tk) {
                     try {
-                      let newTk = new ERC1155TOKEN()
-                      newTk.contractAddress = address
-                      newTk.tokenID = id
-                      newTk.supply = value
-                      newTk.createdAt = new Date()
-                      newTk.tokenURI = 'https://'
-                      await newTk.save()
+                      let bannedItem = await BannedNFT.findOne({
+                        contractAddress: address,
+                        tokenID: id,
+                      })
+                      if (bannedItem) {
+                      } else {
+                        let newTk = new ERC1155TOKEN()
+                        newTk.contractAddress = address
+                        newTk.tokenID = id
+                        newTk.supply = value
+                        newTk.createdAt = new Date()
+                        newTk.tokenURI = 'https://'
+                        await newTk.save()
+                      }
                     } catch (error) {
                       console.log('error in saving new tk in single transfer')
                       console.log(error)
@@ -153,13 +161,20 @@ const trackNewERC1155 = async () => {
                     })
                     if (!tk) {
                       try {
-                        let newTk = new ERC1155TOKEN()
-                        newTk.contractAddress = address
-                        newTk.tokenID = id
-                        newTk.supply = value
-                        newTk.createdAt = new Date()
-                        newTk.tokenURI = 'https://'
-                        await newTk.save()
+                        let bannedItem = await BannedNFT.findOne({
+                          contractAddress: address,
+                          tokenID: id,
+                        })
+                        if (bannedItem) {
+                        } else {
+                          let newTk = new ERC1155TOKEN()
+                          newTk.contractAddress = address
+                          newTk.tokenID = id
+                          newTk.supply = value
+                          newTk.createdAt = new Date()
+                          newTk.tokenURI = 'https://'
+                          await newTk.save()
+                        }
                       } catch (error) {
                         console.log('error in saving new tk')
                         console.log(error)
@@ -244,18 +259,21 @@ const trackNewERC1155 = async () => {
                 contractAddress: address,
                 tokenID: id,
               })
-              let _tkURI = tk.tokenURI
-              if (_tkURI == 'https://') {
-                tk.tokenURI = value
-                try {
-                  let metadata = await axios.get(_tkURI)
-                  let name = metadata.data.name
-                  tk.name = name
-                } catch (error) {
-                  tk.name = ''
+              if (!tk) {
+              } else {
+                let _tkURI = tk.tokenURI
+                if (_tkURI == 'https://') {
+                  tk.tokenURI = value
+                  try {
+                    let metadata = await axios.get(_tkURI)
+                    let name = metadata.data.name
+                    tk.name = name
+                  } catch (error) {
+                    tk.name = ''
+                  }
                 }
+                await tk.save()
               }
-              await tk.save()
             }, 1000)
           })
         })
