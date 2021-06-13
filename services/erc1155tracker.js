@@ -3,7 +3,7 @@ const { default: axios } = require('axios')
 const ethers = require('ethers')
 const mongoose = require('mongoose')
 const ERC1155CONTRACT = mongoose.model('ERC1155CONTRACT')
-const ERC1155TOKEN = mongoose.model('ERC1155TOKEN')
+const NFTITEM = mongoose.model('NFTITEM')
 const ERC1155HOLDING = mongoose.model('ERC1155HOLDING')
 const BannedNFT = mongoose.model('BannedNFT')
 
@@ -51,7 +51,7 @@ const trackNewERC1155 = async () => {
               try {
                 if (from == validatorAddress) {
                   // this is a new mint
-                  let tk = await ERC1155TOKEN.findOne({
+                  let tk = await NFTITEM.findOne({
                     contractAddress: address,
                     tokenID: id,
                   })
@@ -63,12 +63,13 @@ const trackNewERC1155 = async () => {
                       })
                       if (bannedItem) {
                       } else {
-                        let newTk = new ERC1155TOKEN()
+                        let newTk = new NFTITEM()
                         newTk.contractAddress = address
                         newTk.tokenID = id
                         newTk.supply = value
                         newTk.createdAt = new Date()
                         newTk.tokenURI = 'https://'
+                        newTk.tokenType = 1155
                         await newTk.save()
                       }
                     } catch (error) {
@@ -155,7 +156,7 @@ const trackNewERC1155 = async () => {
                 value = parseFloat(value.toString())
                 try {
                   if (from == validatorAddress) {
-                    let tk = await ERC1155TOKEN.findOne({
+                    let tk = await NFTITEM.findOne({
                       contractAddress: address,
                       tokenID: id,
                     })
@@ -167,12 +168,13 @@ const trackNewERC1155 = async () => {
                         })
                         if (bannedItem) {
                         } else {
-                          let newTk = new ERC1155TOKEN()
+                          let newTk = new NFTITEM()
                           newTk.contractAddress = address
                           newTk.tokenID = id
                           newTk.supply = value
                           newTk.createdAt = new Date()
                           newTk.tokenURI = 'https://'
+                          newTk.tokenType = 1155
                           await newTk.save()
                         }
                       } catch (error) {
@@ -255,7 +257,7 @@ const trackNewERC1155 = async () => {
             console.log('uri 1')
             setTimeout(async () => {
               id = parseFloat(id.toString())
-              let tk = await ERC1155TOKEN.findOne({
+              let tk = await NFTITEM.findOne({
                 contractAddress: address,
                 tokenID: id,
               })
