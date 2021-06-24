@@ -269,6 +269,8 @@ const trackNewERC1155 = async () => {
                   try {
                     let metadata = await axios.get(_tkURI)
                     let name = metadata.data.name
+                    let imageURL = metadata.data.image
+                    tk.imageURL = imageURL
                     tk.name = name
                   } catch (error) {
                     tk.name = ''
