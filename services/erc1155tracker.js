@@ -42,14 +42,36 @@ const trackNewERC1155 = async () => {
           contract.on(
             'TransferSingle',
             async (operator, from, to, id, value) => {
-              console.log('transfer single')
               operator = toLowerCase(operator)
               from = toLowerCase(from)
               to = toLowerCase(to)
               id = parseFloat(id.toString())
               value = parseFloat(value.toString())
               try {
-                if (from == validatorAddress) {
+                if (to == validatorAddress) {
+                  try {
+                    let tk = await NFTITEM.findOne({
+                      contractAddress: address,
+                      tokenID: id,
+                    })
+                    let supply = tk.supply
+                    supply = supply - value
+                    tk.supply = supply
+                    await tk.save()
+                    let erc1155Holding = await ERC1155HOLDING.findOne({
+                      contractAddress: address,
+                      tokenID: id,
+                      holderAddress: from,
+                    })
+                    let holding = erc1155Holding.supplyPerHolder
+                    if (holding == value) await erc1155Holding.remove()
+                    else {
+                      holding = holding - value
+                      erc1155Holding.supplyPerHolder = holding
+                      await erc1155Holding.save()
+                    }
+                  } catch (error) {}
+                } else if (from == validatorAddress) {
                   // this is a new mint
                   let tk = await NFTITEM.findOne({
                     contractAddress: address,
@@ -72,10 +94,7 @@ const trackNewERC1155 = async () => {
                         newTk.tokenType = 1155
                         await newTk.save()
                       }
-                    } catch (error) {
-                      console.log('error in saving new tk in single transfer')
-                      console.log(error)
-                    }
+                    } catch (error) {}
                     try {
                       // now update the holdings collection
                       let holding = new ERC1155HOLDING()
@@ -84,11 +103,7 @@ const trackNewERC1155 = async () => {
                       holding.holderAddress = to
                       holding.supplyPerHolder = value
                       await holding.save()
-                    } catch (error) {
-                      console.log(
-                        'error in saving new holding in single transfer',
-                      )
-                    }
+                    } catch (error) {}
                   }
                 } else {
                   // first deduct from sender - from
@@ -103,10 +118,7 @@ const trackNewERC1155 = async () => {
                         senderHolding.supplyPerHolder - value,
                       )
                       await senderHolding.save()
-                    } catch (error) {
-                      console.log('sender holding save failed')
-                      console.log(error)
-                    }
+                    } catch (error) {}
                   }
                   // now add to receiver - to
                   let receiverHolding = await ERC1155HOLDING.findOne({
@@ -119,10 +131,7 @@ const trackNewERC1155 = async () => {
                       receiverHolding.supplyPerHolder =
                         parseInt(receiverHolding.supplyPerHolder) + value
                       await receiverHolding.save()
-                    } catch (error) {
-                      console.log('receiver holding failed in single transfer')
-                      console.log(error)
-                    }
+                    } catch (error) {}
                   } else {
                     try {
                       let _receiverHolding = new ERC1155HOLDING()
@@ -131,16 +140,10 @@ const trackNewERC1155 = async () => {
                       _receiverHolding.holderAddress = to
                       _receiverHolding.supplyPerHolder = value
                       await _receiverHolding.save()
-                    } catch (error) {
-                      console.log('error in single transfer updating receiver')
-                      console.log(error)
-                    }
+                    } catch (error) {}
                   }
                 }
-              } catch (error) {
-                console.log('overall error')
-                console.log(error)
-              }
+              } catch (error) {}
             },
           )
           contract.on(
@@ -177,10 +180,7 @@ const trackNewERC1155 = async () => {
                           newTk.tokenType = 1155
                           await newTk.save()
                         }
-                      } catch (error) {
-                        console.log('error in saving new tk')
-                        console.log(error)
-                      }
+                      } catch (error) {}
                       try {
                         // update holding here
                         let holding = new ERC1155HOLDING()
@@ -189,10 +189,7 @@ const trackNewERC1155 = async () => {
                         holding.tokenID = id
                         holding.supplyPerHolder = value
                         await holding.save()
-                      } catch (error) {
-                        console.log('single transfer save new holding error')
-                        console.log(error)
-                      }
+                      } catch (error) {}
                     }
                   } else {
                     // first deduct from sender - from
@@ -207,12 +204,7 @@ const trackNewERC1155 = async () => {
                           senderHolding.supplyPerHolder - value,
                         )
                         await senderHolding.save()
-                      } catch (error) {
-                        console.log(
-                          'error in batch transfer updating existing sender',
-                        )
-                        console.log(error)
-                      }
+                      } catch (error) {}
                     }
                     // now add to receiver - to
                     let receiverHolding = await ERC1155HOLDING.findOne({
@@ -225,12 +217,7 @@ const trackNewERC1155 = async () => {
                         receiverHolding.supplyPerHolder =
                           parseInt(receiverHolding.supplyPerHolder) + value
                         await receiverHolding.save()
-                      } catch (error) {
-                        console.log(
-                          'error in batch transfer updating receiver holding',
-                        )
-                        console.log(error)
-                      }
+                      } catch (error) {}
                     } else {
                       try {
                         let _receiverHolding = new ERC1155HOLDING()
@@ -239,16 +226,10 @@ const trackNewERC1155 = async () => {
                         _receiverHolding.holderAddress = to
                         _receiverHolding.supplyPerHolder = value
                         await _receiverHolding.save()
-                      } catch (error) {
-                        console.log('batch transfer cannot save new holding')
-                        console.log(error)
-                      }
+                      } catch (error) {}
                     }
                   }
-                } catch (error) {
-                  console.log('batch transfer error')
-                  console.log(error)
-                }
+                } catch (error) {}
               })
               Promise.all(promises)
             },
