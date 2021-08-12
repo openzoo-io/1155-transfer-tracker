@@ -5,7 +5,6 @@ const mongoose = require('mongoose')
 const ERC1155CONTRACT = mongoose.model('ERC1155CONTRACT')
 const NFTITEM = mongoose.model('NFTITEM')
 const ERC1155HOLDING = mongoose.model('ERC1155HOLDING')
-const BannedNFT = mongoose.model('BannedNFT')
 
 const SimplifiedERC1155ABI = require('../constants/simplified1155abi')
 
@@ -79,21 +78,14 @@ const trackNewERC1155 = async () => {
                   })
                   if (!tk) {
                     try {
-                      let bannedItem = await BannedNFT.findOne({
-                        contractAddress: address,
-                        tokenID: id,
-                      })
-                      if (bannedItem) {
-                      } else {
-                        let newTk = new NFTITEM()
-                        newTk.contractAddress = address
-                        newTk.tokenID = id
-                        newTk.supply = value
-                        newTk.createdAt = new Date()
-                        newTk.tokenURI = 'https://'
-                        newTk.tokenType = 1155
-                        await newTk.save()
-                      }
+                      let newTk = new NFTITEM()
+                      newTk.contractAddress = address
+                      newTk.tokenID = id
+                      newTk.supply = value
+                      newTk.createdAt = new Date()
+                      newTk.tokenURI = 'https://'
+                      newTk.tokenType = 1155
+                      await newTk.save()
                     } catch (error) {}
                     try {
                       // now update the holdings collection
@@ -165,21 +157,14 @@ const trackNewERC1155 = async () => {
                     })
                     if (!tk) {
                       try {
-                        let bannedItem = await BannedNFT.findOne({
-                          contractAddress: address,
-                          tokenID: id,
-                        })
-                        if (bannedItem) {
-                        } else {
-                          let newTk = new NFTITEM()
-                          newTk.contractAddress = address
-                          newTk.tokenID = id
-                          newTk.supply = value
-                          newTk.createdAt = new Date()
-                          newTk.tokenURI = 'https://'
-                          newTk.tokenType = 1155
-                          await newTk.save()
-                        }
+                        let newTk = new NFTITEM()
+                        newTk.contractAddress = address
+                        newTk.tokenID = id
+                        newTk.supply = value
+                        newTk.createdAt = new Date()
+                        newTk.tokenURI = 'https://'
+                        newTk.tokenType = 1155
+                        await newTk.save()
                       } catch (error) {}
                       try {
                         // update holding here
