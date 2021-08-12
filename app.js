@@ -4,7 +4,6 @@ const mongoose = require('mongoose')
 require('./models/erc1155contract')
 require('./models/nftitems')
 require('./models/erc1155holding')
-require('./models/bannenft')
 
 const trackNewERC1155 = require('./services/erc1155tracker')
 
