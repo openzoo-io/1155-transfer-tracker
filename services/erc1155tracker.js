@@ -18,6 +18,21 @@ const toLowerCase = (val) => {
   else return val
 }
 
+const loadedContracts = new Map()
+
+const getTokenUri = async (contractAddress, tokenID) => {
+  let sc = loadedContracts.get(contractAddress)
+  if (sc) {
+    let uri = await sc.uri(tokenID)
+    return uri
+  } else {
+    sc = new ethers.Contract(contractAddress, SimplifiedERC1155ABI, provider)
+    loadedContracts.set(contractAddress, sc)
+    let uri = await sc.uri(tokenID)
+    return uri
+  }
+}
+
 const validatorAddress = '0x0000000000000000000000000000000000000000'
 // store trackedAddresses
 const trackedAddresses = []
@@ -83,7 +98,8 @@ const trackNewERC1155 = async () => {
                       newTk.tokenID = id
                       newTk.supply = value
                       newTk.createdAt = new Date()
-                      newTk.tokenURI = 'https://'
+                      let tokenUri = await getTokenUri(address, id)
+                      newTk.tokenURI = tokenUri ? tokenUri : 'https://'
                       newTk.tokenType = 1155
                       await newTk.save()
                     } catch (error) {}
@@ -162,7 +178,8 @@ const trackNewERC1155 = async () => {
                         newTk.tokenID = id
                         newTk.supply = value
                         newTk.createdAt = new Date()
-                        newTk.tokenURI = 'https://'
+                        let tokenUri = await getTokenUri(address, id)
+                        newTk.tokenURI = tokenUri ? tokenUri : 'https://'
                         newTk.tokenType = 1155
                         await newTk.save()
                       } catch (error) {}
@@ -232,15 +249,16 @@ const trackNewERC1155 = async () => {
                 let _tkURI = tk.tokenURI
                 if (_tkURI == 'https://') {
                   tk.tokenURI = value
-                  try {
-                    let metadata = await axios.get(_tkURI)
-                    let name = metadata.data.name
-                    let imageURL = metadata.data.image
-                    tk.imageURL = imageURL
-                    tk.name = name
-                  } catch (error) {
-                    tk.name = ''
-                  }
+                }
+                try {
+                  let metadata = await axios.get(_tkURI)
+                  let name = metadata.data.name
+                  let imageURL = metadata.data.image
+                  tk.imageURL = imageURL
+                  tk.name = name
+                  tk.thumbnailPath = '-'
+                } catch (error) {
+                  tk.name = ''
                 }
                 await tk.save()
               }
