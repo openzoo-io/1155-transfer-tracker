@@ -5,6 +5,7 @@ const mongoose = require('mongoose')
 const ERC1155CONTRACT = mongoose.model('ERC1155CONTRACT')
 const NFTITEM = mongoose.model('NFTITEM')
 const ERC1155HOLDING = mongoose.model('ERC1155HOLDING')
+const Like = mongoose.model('Like')
 
 const SimplifiedERC1155ABI = require('../constants/simplified1155abi')
 
@@ -33,6 +34,205 @@ const getTokenUri = async (contractAddress, tokenID) => {
   }
 }
 
+const getSupply = async (contractAddress, tokenID, ownerAddress) => {
+  let sc = loadedContracts.get(contractAddress)
+  if (sc) {
+    let balance = await sc.balanceOf(ownerAddress, tokenID)
+    console.log(`balance of ${ownerAddress} is ${balance}`)
+    return balance
+  } else {
+    sc = new ethers.Contract(contractAddress, SimplifiedERC1155ABI, provider)
+    loadedContracts.set(contractAddress, sc)
+    let balance = await sc.balanceOf(ownerAddress, tokenID)
+    console.log(`balance of ${ownerAddress} is ${balance}`)
+    return balance
+  }
+}
+
+const handleTransferSingle = async (
+  from,
+  to,
+  contractAddress,
+  tokenID,
+  value,
+) => {
+  try {
+    from = toLowerCase(from)
+    to = toLowerCase(to)
+    contractAddress = toLowerCase(contractAddress)
+    tokenID = parseInt(tokenID.toString())
+    value = parseInt(value.toString())
+    let tk = await NFTITEM.findOne({
+      contractAddress: contractAddress,
+      tokenID: tokenID,
+    })
+    let fromSupply = await getSupply(contractAddress, tokenID, from)
+    let db_fromSupply = await ERC1155HOLDING.findOne({
+      contractAddress: contractAddress,
+      tokenID: tokenID,
+      holderAddress: from,
+    })
+    if (!db_fromSupply) {
+      console.log('no from supply')
+      return
+    }
+    db_fromSupply = parseInt(db_fromSupply.supplyPerHolder)
+    if (db_fromSupply == fromSupply) {
+      console.log('already same')
+      return
+    }
+    if (to == validatorAddress) {
+      // burn -- only when token already exists
+      if (tk) {
+        let supply = tk.supply
+        if (supply == value) {
+          // this is the final burn
+          try {
+            await tk.remove()
+            await ERC1155HOLDING.deleteMany({
+              contractAddress: contractAddress,
+              tokenID: tokenID,
+            })
+            await Like.deleteMany({
+              contractAddress: contractAddress,
+              tokenID: tokenID,
+            })
+          } catch (error) {
+            console.log('1')
+            console.log(error)
+          }
+        } else {
+          // now remove the supply
+          supply = supply - value
+          tk.supply = supply
+          await tk.save()
+          let holding = await ERC1155HOLDING.findOne({
+            contractAddress: contractAddress,
+            tokenID: tokenID,
+            holderAddress: from,
+          })
+          holding = parseInt(holding.supplyPerHolder) - value
+          await holding.save()
+        }
+      } else {
+        // already burnt, do nothing
+      }
+    } else if (from == validatorAddress) {
+      // mint
+      let toSupply = await getSupply(contractAddress, tokenID, to)
+      let db_toSupply = await ERC1155HOLDING.findOne({
+        contractAddress: contractAddress,
+        tokenID: tokenID,
+        holderAddress: to,
+      })
+      if (db_toSupply) {
+        if (db_toSupply.supplyPerHolder != toSupply) {
+          db_toSupply.supplyPerHolder = toSupply
+          await db_toSupply.save()
+        }
+      } else {
+        // this is a new mint
+        let tk = await NFTITEM.findOne({
+          contractAddress: contractAddress,
+          tokenID: tokenID,
+        })
+        if (!tk) {
+          try {
+            let newTk = new NFTITEM()
+            newTk.contractAddress = contractAddress
+            newTk.tokenID = tokenID
+            newTk.supply = value
+            newTk.createdAt = new Date()
+            let tokenUri = await getTokenUri(contractAddress, tokenID)
+            newTk.tokenURI = tokenUri ? tokenUri : 'https://'
+            newTk.tokenType = 1155
+            await newTk.save()
+          } catch (error) {
+            console.log('2')
+            console.log(error)
+          }
+        }
+        let holding = await ERC1155HOLDING.findOne({
+          contractAddress: contractAddress,
+          tokenID: tokenID,
+          holderAddress: to,
+        })
+        if (!holding) {
+          try {
+            // now update the holdings collection
+            let holding = new ERC1155HOLDING()
+            holding.contractAddress = contractAddress
+            holding.tokenID = tokenID
+            holding.holderAddress = to
+            holding.supplyPerHolder = value
+            await holding.save()
+          } catch (error) {
+            console.log('3')
+            console.log(error)
+          }
+        }
+      }
+    } else {
+      // transfer
+      let fromSupply = await getSupply(contractAddress, tokenID, from)
+      let toSupply = await getSupply(contractAddress, tokenID, to)
+      let db_fromSupply = await ERC1155HOLDING.findOne({
+        contractAddress: contractAddress,
+        tokenID: tokenID,
+        holderAddress: from,
+      })
+      let db_toSupply = await ERC1155HOLDING.findOne({
+        contractAddress: contractAddress,
+        tokenID: tokenID,
+        holderAddress: to,
+      })
+      console.log('this is a transfer')
+      console.log(from, to, contractAddress, tokenID, value)
+      console.log('onchain from Supply', fromSupply)
+      console.log('onchain to supply', toSupply)
+      if (db_fromSupply) {
+        try {
+          if (parseInt(db_fromSupply.supplyPerHolder) != fromSupply) {
+            db_fromSupply.supplyPerHolder = fromSupply
+            await db_fromSupply.save()
+          }
+        } catch (error) {
+          console.log('4')
+          console.log(error)
+        }
+      }
+      if (db_toSupply) {
+        try {
+          if (parseInt(db_toSupply.supplyPerHolder) != toSupply) {
+            db_toSupply.supplyPerHolder = toSupply
+            await db_toSupply.save()
+          }
+        } catch (error) {
+          console.log('5')
+          console.log(error)
+        }
+      } else {
+        try {
+          // now update the holdings collection
+          let holding = new ERC1155HOLDING()
+          holding.contractAddress = contractAddress
+          holding.tokenID = tokenID
+          holding.holderAddress = to
+          holding.supplyPerHolder = toSupply
+          console.log('transfer to non-holder', toSupply)
+          await holding.save()
+        } catch (error) {
+          console.log('6')
+          console.log(error)
+        }
+      }
+    }
+  } catch (error) {
+    console.log('7')
+    console.log(error)
+  }
+}
+
 const validatorAddress = '0x0000000000000000000000000000000000000000'
 // store trackedAddresses
 const trackedAddresses = []
@@ -56,102 +256,7 @@ const trackNewERC1155 = async () => {
           contract.on(
             'TransferSingle',
             async (operator, from, to, id, value) => {
-              operator = toLowerCase(operator)
-              from = toLowerCase(from)
-              to = toLowerCase(to)
-              id = parseFloat(id.toString())
-              value = parseFloat(value.toString())
-              try {
-                if (to == validatorAddress) {
-                  try {
-                    let tk = await NFTITEM.findOne({
-                      contractAddress: address,
-                      tokenID: id,
-                    })
-                    let supply = tk.supply
-                    supply = supply - value
-                    tk.supply = supply
-                    await tk.save()
-                    let erc1155Holding = await ERC1155HOLDING.findOne({
-                      contractAddress: address,
-                      tokenID: id,
-                      holderAddress: from,
-                    })
-                    let holding = erc1155Holding.supplyPerHolder
-                    if (holding == value) await erc1155Holding.remove()
-                    else {
-                      holding = holding - value
-                      erc1155Holding.supplyPerHolder = holding
-                      await erc1155Holding.save()
-                    }
-                  } catch (error) {}
-                } else if (from == validatorAddress) {
-                  // this is a new mint
-                  let tk = await NFTITEM.findOne({
-                    contractAddress: address,
-                    tokenID: id,
-                  })
-                  if (!tk) {
-                    try {
-                      let newTk = new NFTITEM()
-                      newTk.contractAddress = address
-                      newTk.tokenID = id
-                      newTk.supply = value
-                      newTk.createdAt = new Date()
-                      let tokenUri = await getTokenUri(address, id)
-                      newTk.tokenURI = tokenUri ? tokenUri : 'https://'
-                      newTk.tokenType = 1155
-                      await newTk.save()
-                    } catch (error) {}
-                    try {
-                      // now update the holdings collection
-                      let holding = new ERC1155HOLDING()
-                      holding.contractAddress = address
-                      holding.tokenID = id
-                      holding.holderAddress = to
-                      holding.supplyPerHolder = value
-                      await holding.save()
-                    } catch (error) {}
-                  }
-                } else {
-                  // first deduct from sender - from
-                  let senderHolding = await ERC1155HOLDING.findOne({
-                    contractAddress: address,
-                    tokenID: id,
-                    holderAddress: from,
-                  })
-                  if (senderHolding) {
-                    try {
-                      senderHolding.supplyPerHolder = parseInt(
-                        senderHolding.supplyPerHolder - value,
-                      )
-                      await senderHolding.save()
-                    } catch (error) {}
-                  }
-                  // now add to receiver - to
-                  let receiverHolding = await ERC1155HOLDING.findOne({
-                    contractAddress: address,
-                    tokenID: id,
-                    holderAddress: to,
-                  })
-                  if (receiverHolding) {
-                    try {
-                      receiverHolding.supplyPerHolder =
-                        parseInt(receiverHolding.supplyPerHolder) + value
-                      await receiverHolding.save()
-                    } catch (error) {}
-                  } else {
-                    try {
-                      let _receiverHolding = new ERC1155HOLDING()
-                      _receiverHolding.contractAddress = address
-                      _receiverHolding.tokenID = id
-                      _receiverHolding.holderAddress = to
-                      _receiverHolding.supplyPerHolder = value
-                      await _receiverHolding.save()
-                    } catch (error) {}
-                  }
-                }
-              } catch (error) {}
+              await handleTransferSingle(from, to, address, id, value)
             },
           )
           contract.on(
@@ -165,73 +270,7 @@ const trackNewERC1155 = async () => {
                 id = parseFloat(id.toString())
                 let value = values[index]
                 value = parseFloat(value.toString())
-                try {
-                  if (from == validatorAddress) {
-                    let tk = await NFTITEM.findOne({
-                      contractAddress: address,
-                      tokenID: id,
-                    })
-                    if (!tk) {
-                      try {
-                        let newTk = new NFTITEM()
-                        newTk.contractAddress = address
-                        newTk.tokenID = id
-                        newTk.supply = value
-                        newTk.createdAt = new Date()
-                        let tokenUri = await getTokenUri(address, id)
-                        newTk.tokenURI = tokenUri ? tokenUri : 'https://'
-                        newTk.tokenType = 1155
-                        await newTk.save()
-                      } catch (error) {}
-                      try {
-                        // update holding here
-                        let holding = new ERC1155HOLDING()
-                        holding.contractAddress = address
-                        holding.holderAddress = to
-                        holding.tokenID = id
-                        holding.supplyPerHolder = value
-                        await holding.save()
-                      } catch (error) {}
-                    }
-                  } else {
-                    // first deduct from sender - from
-                    let senderHolding = await ERC1155HOLDING.findOne({
-                      contractAddress: address,
-                      tokenID: id,
-                      holderAddress: from,
-                    })
-                    if (senderHolding) {
-                      try {
-                        senderHolding.supplyPerHolder = parseInt(
-                          senderHolding.supplyPerHolder - value,
-                        )
-                        await senderHolding.save()
-                      } catch (error) {}
-                    }
-                    // now add to receiver - to
-                    let receiverHolding = await ERC1155HOLDING.findOne({
-                      contractAddress: address,
-                      tokenID: id,
-                      holderAddress: to,
-                    })
-                    if (receiverHolding) {
-                      try {
-                        receiverHolding.supplyPerHolder =
-                          parseInt(receiverHolding.supplyPerHolder) + value
-                        await receiverHolding.save()
-                      } catch (error) {}
-                    } else {
-                      try {
-                        let _receiverHolding = new ERC1155HOLDING()
-                        _receiverHolding.contractAddress = address
-                        _receiverHolding.tokenID = id
-                        _receiverHolding.holderAddress = to
-                        _receiverHolding.supplyPerHolder = value
-                        await _receiverHolding.save()
-                      } catch (error) {}
-                    }
-                  }
-                } catch (error) {}
+                await handleTransferSingle(from, to, address, id, value)
               })
               Promise.all(promises)
             },
@@ -270,7 +309,10 @@ const trackNewERC1155 = async () => {
       setTimeout(async () => {
         await func()
       }, 1000 * 10)
-    } catch (error) {}
+    } catch (error) {
+      console.log('8')
+      console.log(error)
+    }
   }
   await func()
 }
