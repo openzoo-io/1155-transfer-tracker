@@ -21,6 +21,27 @@ const toLowerCase = (val) => {
 
 const loadedContracts = new Map()
 
+const bannedCollections = new Map()
+
+const isBannedCollection = async (contractAddress) => {
+  let isBanned = bannedCollections.get(contractAddress)
+  if (isBanned) return true
+  try {
+    let contract_721 = await ERC1155CONTRACT.findOne({
+      address: contractAddress,
+    })
+    if (contract_721) {
+      bannedCollections.set(contractAddress, true)
+      return true
+    } else {
+      bannedCollections.set(contractAddress, false)
+      return false
+    }
+  } catch (error) {
+    return false
+  }
+}
+
 const getTokenUri = async (contractAddress, tokenID) => {
   let sc = loadedContracts.get(contractAddress)
   if (sc) {
@@ -146,6 +167,8 @@ const handleTransferSingle = async (
             let tokenUri = await getTokenUri(contractAddress, tokenID)
             newTk.tokenURI = tokenUri ? tokenUri : 'https://'
             newTk.tokenType = 1155
+            let isBanned = await isBannedCollection(contractAddress)
+            newTk.isAppropriate = !isBanned
             await newTk.save()
           } catch (error) {
             console.log('2')
