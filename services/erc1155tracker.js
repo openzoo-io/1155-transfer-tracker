@@ -39,25 +39,51 @@ const trackSingleNewERC1155 = async () => {
             )
             trackedAddresses.push(address)
             trackedContracts.push(sc)
-            sc.on('TransferSingle', async (operator, from, to, id, value) => {
-              id = parseInt(id.toString())
-              value = parseInt(value.toString())
-              callAPI('handle1155SingleTransfer', {
-                address,
-                from,
-                to,
-                id,
-                value,
-              })
+            sc.on('TransferSingle', (operator, from, to, id, value) => {
+              try {
+                id = parseInt(id.toString())
+                value = parseInt(value.toString())
+                callAPI('handle1155SingleTransfer', {
+                  address,
+                  from,
+                  to,
+                  id,
+                  value,
+                })
+              } catch (error) {}
             })
-            sc.on(
-              'TransferBatch',
-              async (operator, from, to, ids, values) => {
-                
-              },
-            )
+            sc.on('TransferBatch', (operator, from, to, _ids, _values) => {
+              try {
+                let ids = []
+                let values = []
+                _ids.map((_, index) => {
+                  let id = _ids[index]
+                  id = parseInt(id.toString())
+                  ids.push(id)
+                  let value = _values[index]
+                  value = parseInt(value.toString())
+                  values.push(value)
+                })
+                ids = ids.join()
+                values = values.join()
+                callAPI('handle1155BatchTransfer', {
+                  address,
+                  from,
+                  to,
+                  id: ids,
+                  value: values,
+                })
+              } catch (error) {}
+            })
             sc.on('URI', async (value, id) => {
-              id = parseInt(id.toString())
+              try {
+                id = parseInt(id.toString())
+                callAPI('handle1155URI', {
+                  address,
+                  id,
+                  value,
+                })
+              } catch (error) {}
             })
           }
         })
