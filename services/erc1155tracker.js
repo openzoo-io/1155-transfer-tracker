@@ -15,12 +15,23 @@ const provider = new ethers.providers.JsonRpcProvider(
 )
 
 const callAPI = async (endpoint, data) => {
-  console.log(data)
-  await axios({
-    method: 'post',
-    url: apiEndPoint + endpoint,
-    data,
-  })
+  let times = 0;
+  while(times < 100) {
+    try {
+      let ret = await axios({
+        method: 'post',
+        url: apiEndPoint + endpoint,
+        data,
+      });
+      return ret;
+    } catch (err) {
+      console.error('[callAPI error] failed for: ', {data});
+      console.error(err.message);
+      console.log(`retry after ${5*times} seconds.`)
+      await sleep(5000*times);
+      times++;
+    }
+  }
 }
 
 const trackSingleNewERC1155 = async () => {
