@@ -1,6 +1,7 @@
 require('dotenv').config()
 const { default: axios } = require('axios')
 const ethers = require('ethers')
+const sleep = require('ko-sleep');
 
 const SimplifiedERC1155ABI = require('../constants/simplified1155abi')
 
@@ -15,6 +16,7 @@ const provider = new ethers.providers.JsonRpcProvider(
 )
 
 const callAPI = async (endpoint, data) => {
+  console.log('call api with', data);
   let times = 0;
   while(times < 100) {
     try {
@@ -41,6 +43,8 @@ const trackSingleNewERC1155 = async () => {
       let data = response.data
       if (data.status == 'success') {
         data = data.data
+        console.log('api got', data);
+
         data.map((address) => {
           if (!trackedAddresses.includes(address)) {
             let sc = new ethers.Contract(
@@ -106,6 +110,7 @@ const trackSingleNewERC1155 = async () => {
 const trackNewERC1155 = async () => {
   const func = async () => {
     try {
+      console.log('ready to track');
       await trackSingleNewERC1155()
       setTimeout(async () => {
         await func()
