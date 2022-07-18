@@ -115,7 +115,13 @@ const trackNewERC1155 = async () => {
       setTimeout(async () => {
         await func()
       }, 1000 * 5)
-    } catch (error) {}
+    } catch (error) {
+		console.log('failed...ready to track');
+		await trackSingleNewERC1155()
+      setTimeout(async () => {
+        await func()
+      }, 1000 * 5)
+	}
   }
   await func()
 }
