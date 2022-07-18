@@ -43,7 +43,7 @@ const trackSingleNewERC1155 = async () => {
       let data = response.data
       if (data.status == 'success') {
         data = data.data
-        console.log('api got', data);
+        console.log('api got length', data.length);
 
         data.map((address) => {
           if (!trackedAddresses.includes(address)) {
