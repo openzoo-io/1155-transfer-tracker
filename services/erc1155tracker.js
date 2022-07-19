@@ -52,9 +52,11 @@ const trackSingleNewERC1155 = async () => {
               SimplifiedERC1155ABI,
               provider,
             )
-            trackedAddresses.push(address)
+            trackedAddresses.push(address);
+            console.log('track new contract', address);
             trackedContracts.push(sc)
             sc.on('TransferSingle', (operator, from, to, id, value) => {
+              console.log('Found TransferSignle event:',address,from,to)
               try {
                 id = parseInt(id.toString())
                 value = parseInt(value.toString())
@@ -68,6 +70,7 @@ const trackSingleNewERC1155 = async () => {
               } catch (error) {}
             })
             sc.on('TransferBatch', (operator, from, to, _ids, _values) => {
+              console.log('Found TransferBatch event:',address,from,to)
               try {
                 let ids = []
                 let values = []
@@ -91,6 +94,7 @@ const trackSingleNewERC1155 = async () => {
               } catch (error) {}
             })
             sc.on('URI', async (value, id) => {
+              console.log('Found URI event:',address,from,to)
               try {
                 id = parseInt(id.toString())
                 callAPI('handle1155URI', {
