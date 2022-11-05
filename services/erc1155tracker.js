@@ -94,7 +94,7 @@ const trackSingleNewERC1155 = async () => {
               } catch (error) {}
             })
             sc.on('URI', async (value, id) => {
-              console.log('Found URI event:',address,from,to)
+              console.log('Found URI event:',address,value,id)
               try {
                 id = parseInt(id.toString())
                 callAPI('handle1155URI', {
